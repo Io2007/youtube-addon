@@ -201,11 +201,12 @@ app.get('/search', async (c) => {
       
       clearTimeout(timeoutId);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error(`Failed to fetch ${filter} from Piped: HTTP ${response.status}`);
+        return null;
       }
-      
-      return await response.json();
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.error(`Search request timed out for ${filter}`);
@@ -328,10 +329,17 @@ app.get('/stream/:id', async (c) => {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      console.error(`Failed to fetch stream for ${videoId}: HTTP ${response.status}`);
+      return c.json({ error: 'Failed to fetch stream', details: `HTTP ${response.status}` }, 500);
     }
     
     const data = await response.json();
+    
+    // Check if the response contains an error (like SIGN_IN_REQUIRED)
+    if (data.error) {
+      console.error(`Piped returned error:`, data.error);
+      return c.json({ error: 'Failed to fetch stream', details: data.message || data.error }, 500);
+    }
     
     // Try DASH streams first (if playable), fallback to HLS, then audioStreams
     let streamUrl: string | undefined;
@@ -400,6 +408,11 @@ app.get('/stream/:id', async (c) => {
       quality = `${Math.round(bestStream.bitrate / 1000)}kbps`;
     }
     
+    // If we still don't have a stream URL, return an error
+    if (!streamUrl) {
+      return c.json({ error: 'No valid stream URL found' }, 404);
+    }
+    
     const result = {
       url: streamUrl,
       format,
@@ -432,16 +445,22 @@ app.get('/album/:id', async (c) => {
   const rawId = resolved.rawId;
 
   try {
-    // Try to fetch as playlist first (Piped treats albums as playlists)
     const response = await fetch(`${PIPED_BASE}/playlist?list=${rawId}`, {
       headers: { 'Accept': 'application/json' },
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      console.error(`Failed to fetch album ${rawId}: HTTP ${response.status}`);
+      return c.json({ error: 'Failed to fetch album' }, 500);
     }
     
     const data = await response.json();
+    
+    // Check if the response contains an error
+    if (data.error) {
+      console.error(`Piped returned error:`, data.error);
+      return c.json({ error: 'Failed to fetch album', details: data.message || data.error }, 500);
+    }
     
     // Map album metadata
     const album = {
@@ -486,29 +505,44 @@ app.get('/artist/:id', async (c) => {
   const channelId = resolved.rawId;
 
   try {
-    // Fetch channel info
     const response = await fetch(`${PIPED_BASE}/channel/${channelId}`, {
       headers: { 'Accept': 'application/json' },
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      console.error(`Failed to fetch artist ${channelId}: HTTP ${response.status}`);
+      return c.json({ error: 'Failed to fetch artist' }, 500);
     }
     
     const data = await response.json();
+    
+    // Check if the response contains an error
+    if (data.error) {
+      console.error(`Piped returned error:`, data.error);
+      return c.json({ error: 'Failed to fetch artist', details: data.message || data.error }, 500);
+    }
+    
     const artistName = data.name || data.title || 'Unknown Artist';
     
     // Re-query for top tracks using search
-    const tracksPromise = fetch(`${PIPED_BASE}/search?q=${encodeURIComponent(artistName)}&filter=music_songs`, {
-      headers: { 'Accept': 'application/json' },
-    }).then(r => r.ok ? r.json() : { items: [] });
+    const fetchSearch = async (query: string, filter: string) => {
+      try {
+        const resp = await fetch(`${PIPED_BASE}/search?q=${encodeURIComponent(query)}&filter=${filter}`, {
+          headers: { 'Accept': 'application/json' },
+        });
+        if (resp.ok) {
+          return await resp.json();
+        }
+      } catch (e) {
+        console.error(`Search failed for ${filter}:`, e);
+      }
+      return { items: [] };
+    };
     
-    // Re-query for albums using search
-    const albumsPromise = fetch(`${PIPED_BASE}/search?q=${encodeURIComponent(artistName)}&filter=music_albums`, {
-      headers: { 'Accept': 'application/json' },
-    }).then(r => r.ok ? r.json() : { items: [] });
-    
-    const [tracksData, albumsData] = await Promise.all([tracksPromise, albumsPromise]);
+    const [tracksData, albumsData] = await Promise.all([
+      fetchSearch(artistName, 'music_songs'),
+      fetchSearch(artistName, 'music_albums')
+    ]);
     
     // Map top tracks
     const topTracks = (tracksData.items || []).slice(0, 10).map((item: any) => ({
@@ -558,10 +592,17 @@ app.get('/playlist/:id', async (c) => {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      console.error(`Failed to fetch playlist ${rawId}: HTTP ${response.status}`);
+      return c.json({ error: 'Failed to fetch playlist' }, 500);
     }
     
     const data = await response.json();
+    
+    // Check if the response contains an error
+    if (data.error) {
+      console.error(`Piped returned error:`, data.error);
+      return c.json({ error: 'Failed to fetch playlist', details: data.message || data.error }, 500);
+    }
     
     // Map playlist metadata
     const playlist = {
