@@ -1,16 +1,3 @@
-name = "youtube-music-addon"
-main = "src/worker.ts"
-compatibility_date = "2024-01-01"
-
-# Environment variables (optional)
-# [vars]
-# PIPED_BASE = "https://api.piped.private.coffee"
-
-# Routes (optional - if you want custom domains)
-# [[routes]]
-# pattern = "youtube-music.yourdomain.com/*"
-# zone_name = "yourdomain.com"
-
-# Build configuration
-[build]
-command = "npm run build"
+name = "youtube-addon"
+compatibility_date = "2026-05-04"
+main = "src/index.ts"

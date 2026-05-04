@@ -2,16 +2,12 @@
   "name": "youtube-music-addon",
   "version": "1.0.0",
   "description": "YouTube Music addon for Eclipse with type-specific search fan-out via Piped API",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/node-server.js",
-    "start:legacy": "node dist/server.js",
-    "dev": "ts-node src/node-server.ts",
-    "dev:legacy": "ts-node src/server.ts",
-    "build:worker": "wrangler deploy --dry-run --outdir=dist-worker",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "echo 'No build required'",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "keywords": [
     "youtube-music",
@@ -22,13 +18,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3",
     "wrangler": "^4.86.0"
   },
   "dependencies": {
-    "@hono/node-server": "^2.0.1",
     "hono": "^4.12.16"
   }
 }
