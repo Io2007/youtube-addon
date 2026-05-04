@@ -56,9 +56,17 @@ const resolveId = (id: string): { type: string; rawId: string } | null => {
     const listMatch = rawId.match(/[?&]list=([a-zA-Z0-9_-]+)/);
     if (listMatch) {
       rawId = listMatch[1];
-    } else if (rawId.startsWith('playlist?')) {
-      rawId = rawId.replace(/^playlist\?/, '');
+    } else if (rawId.includes('playlist?')) {
+      // Extract everything after "playlist?"
+      const parts = rawId.split('playlist?');
+      rawId = parts.length > 1 ? parts[1] : rawId;
+      // Further extract list= value if present
+      const listPart = rawId.match(/list=([a-zA-Z0-9_-]+)/);
+      if (listPart) {
+        rawId = listPart[1];
+      }
     }
+    // Album IDs start with OLAK5uy_, playlist IDs start with PL or LL
     return { type: 'album', rawId };
   }
   if (trimmedId.startsWith('ytar_')) {
@@ -70,8 +78,15 @@ const resolveId = (id: string): { type: string; rawId: string } | null => {
     const listMatch = rawId.match(/[?&]list=([a-zA-Z0-9_-]+)/);
     if (listMatch) {
       rawId = listMatch[1];
-    } else if (rawId.startsWith('playlist?')) {
-      rawId = rawId.replace(/^playlist\?/, '');
+    } else if (rawId.includes('playlist?')) {
+      // Extract everything after "playlist?"
+      const parts = rawId.split('playlist?');
+      rawId = parts.length > 1 ? parts[1] : rawId;
+      // Further extract list= value if present
+      const listPart = rawId.match(/list=([a-zA-Z0-9_-]+)/);
+      if (listPart) {
+        rawId = listPart[1];
+      }
     }
     return { type: 'playlist', rawId };
   }
