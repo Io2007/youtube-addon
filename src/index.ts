@@ -67,7 +67,7 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 app.get('/', (c) => c.json({ message: 'YouTube Music Addon API', version: '1.0.0' }));
 
 // Manifest endpoint for Eclipse
-app.get('/manifest', (c) => {
+app.get('/manifest.json', (c) => {
   return c.json({
     id: 'youtube-music-addon',
     name: 'YouTube Music',
