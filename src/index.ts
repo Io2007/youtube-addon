@@ -34,10 +34,15 @@ const extractVideoId = (id: string): string | null => {
   const trimmedId = id.trim();
   
   if (trimmedId.startsWith('yt_') && !trimmedId.startsWith('ytalb_') && !trimmedId.startsWith('ytar_') && !trimmedId.startsWith('ytpl_')) {
-    const suffix = trimmedId.slice(3);
+    let suffix = trimmedId.slice(3);
     // Handle case where ID is in format "watch?v=<videoId>" or similar
     if (suffix.includes('watch?v=')) {
       const match = suffix.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+    // Handle yt_watch?v=<videoId> format (with underscore)
+    if (suffix.startsWith('watch?v=')) {
+      const match = suffix.match(/watch\?v=([a-zA-Z0-9_-]+)/);
       return match ? match[1] : null;
     }
     return suffix;
@@ -89,6 +94,11 @@ const resolveId = (id: string): { type: string; rawId: string } | null => {
       }
     }
     return { type: 'playlist', rawId };
+  }
+  if (trimmedId.startsWith('yt_watch?v=')) {
+    // Handle yt_watch?v=<videoId> format directly
+    const videoId = trimmedId.slice(11).trim();
+    return { type: 'track', rawId: videoId };
   }
   if (trimmedId.startsWith('yt_')) {
     return { type: 'track', rawId: trimmedId.slice(3).trim() };
