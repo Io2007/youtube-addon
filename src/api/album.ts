@@ -1,5 +1,5 @@
-import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "./types";
-import type { AlbumDetails, Track } from "./types";
+import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "../core/types";
+import type { AlbumDetails, Track } from "../core/types";
 
 /**
  * Extracts the underlying Piped ID from an album ID

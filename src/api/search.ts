@@ -1,5 +1,5 @@
-import { PIPED_BASE, ID_PREFIXES, SEARCH_FILTERS, getFullResolutionUrl } from "./types";
-import type { Track, Album, Artist, Playlist, SearchResults } from "./types";
+import { PIPED_BASE, ID_PREFIXES, SEARCH_FILTERS, getFullResolutionUrl } from "../core/types";
+import type { Track, Album, Artist, Playlist, SearchResults } from "../core/types";
 
 /**
  * Fetches search results from Piped API with a specific filter

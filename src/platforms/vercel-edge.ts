@@ -9,7 +9,7 @@
  * Or connect your GitHub repo to Vercel for automatic deployments
  */
 
-import app from "./hono-app";
+import app from "../core/hono-app";
 
 // Vercel Edge Functions use the Web API
 export const config = {

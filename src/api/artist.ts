@@ -1,5 +1,5 @@
-import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "./types";
-import type { ArtistDetails, Track, Album } from "./types";
+import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "../core/types";
+import type { ArtistDetails, Track, Album } from "../core/types";
 import { search } from "./search";
 
 /**

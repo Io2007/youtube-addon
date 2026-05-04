@@ -7,7 +7,7 @@
  * 3. Deploy: wrangler deploy
  */
 
-import app from "./hono-app";
+import app from "../core/hono-app";
 
 export default {
   fetch: app.fetch,

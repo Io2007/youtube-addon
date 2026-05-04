@@ -5,7 +5,7 @@
  */
 
 import { serve } from "@hono/node-server";
-import app from "./hono-app";
+import app from "../core/hono-app";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 

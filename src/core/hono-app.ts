@@ -17,7 +17,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { search, getStream, getAlbum, getArtist, getPlaylist, RESOURCES, TYPES, CONTENT_TYPE } from "./index";
+import { search, getStream, getAlbum, getArtist, getPlaylist, RESOURCES, TYPES, CONTENT_TYPE } from "../api";
 
 // Create Hono app
 const app = new Hono();

@@ -10,7 +10,7 @@
  */
 
 import http from "http";
-import { search, getStream, getAlbum, getArtist, getPlaylist } from "./index";
+import { search, getStream, getAlbum, getArtist, getPlaylist } from "../index";
 
 const PORT = process.env.PORT || 3000;
 

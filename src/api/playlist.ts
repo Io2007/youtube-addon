@@ -1,5 +1,5 @@
-import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "./types";
-import type { PlaylistDetails, Track } from "./types";
+import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "../core/types";
+import type { PlaylistDetails, Track } from "../core/types";
 
 /**
  * Extracts the playlistId from a playlist ID

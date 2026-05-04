@@ -1,5 +1,5 @@
-import { PIPED_BASE, ID_PREFIXES } from "./types";
-import type { StreamResponse } from "./types";
+import { PIPED_BASE, ID_PREFIXES } from "../core/types";
+import type { StreamResponse } from "../core/types";
 
 /**
  * Extracts videoId from a track ID
