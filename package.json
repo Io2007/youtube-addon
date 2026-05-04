@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
+    "build": "echo 'No build required'",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
