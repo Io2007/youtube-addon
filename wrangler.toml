@@ -8,6 +8,3 @@ region = "austria"
 [observability.logs]
 enabled = true
 invocation_logs = true
-
-[vars]
-region = "austria"
