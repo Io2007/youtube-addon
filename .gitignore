@@ -1,127 +1,50 @@
-```gitignore
+```
 # Dependencies
 node_modules/
 
-# Compiled JavaScript/TypeScript
-*.js
-*.tsbuildinfo
+# Build artifacts
 dist/
 build/
-
-# Logs and temp files
-*.log
-*.tmp
+target/
 
 # Environment variables
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editors
+# Cache directories
+.cache/
+.node_cache/
+.npm/
+.yarn/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE specific
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # Coverage reports
 coverage/
 htmlcov/
 
-# Python related (if applicable)
+# Python specific (if applicable)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
 *.so
-.venv/
-venv/
-.env/
-pip-log.txt
-pip-delete-this-directory.txt
-.pytest_cache/
+
+# MyPy cache
 .mypy_cache/
-
-# Distribution / packaging
-.Python
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Testing
-nosetests.xml
-coverage.xml
-*.cover
-*.gcda
-*.gcno
-
-# Translations
-*.mo
-*.pot
-
-# Django
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask
-instance/
-.webassets-cache
-
-# Scrapy
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
 ```

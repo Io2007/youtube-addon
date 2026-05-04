@@ -96,16 +96,40 @@ const resolveId = (id: string): { type: string; rawId: string } | null => {
   return null;
 };
 
-// Map artwork URL from Piped response
-const getArtworkUrl = (item: any, size: number = 544): string | undefined => {
+// Map artwork URL from Piped response - no size limits
+const getArtworkUrl = (item: any): string | undefined => {
   if (!item) return undefined;
-  if (item.thumbnail) return item.thumbnail;
-  if (item.artwork) return item.artwork;
+  
+  // Try multiple possible fields for artwork
+  if (item.thumbnail) {
+    // Remove any size restrictions from thumbnail URLs
+    let url = item.thumbnail;
+    // Remove common size parameters to get full resolution
+    url = url.replace(/&?[ws]=\d+/g, '');
+    url = url.replace(/&?size=\d+/g, '');
+    url = url.replace(/&?crop=\w+/g, '');
+    return url;
+  }
+  
+  if (item.artwork) {
+    let url = item.artwork;
+    // Remove common size parameters to get full resolution
+    url = url.replace(/&?[ws]=\d+/g, '');
+    url = url.replace(/&?size=\d+/g, '');
+    url = url.replace(/&?crop=\w+/g, '');
+    return url;
+  }
+  
   if (item.relatedBaseUri) return `${item.relatedBaseUri}/maxresdefault.jpg`;
   
   // Handle src array for thumbnails
   if (item.src && Array.isArray(item.src) && item.src.length > 0) {
-    return item.src[0];
+    let url = item.src[0];
+    // Remove common size parameters to get full resolution
+    url = url.replace(/&?[ws]=\d+/g, '');
+    url = url.replace(/&?size=\d+/g, '');
+    url = url.replace(/&?crop=\w+/g, '');
+    return url;
   }
   
   return undefined;
@@ -137,12 +161,22 @@ app.get('/manifest.json', (c) => {
   });
 });
 
+// Search cache to avoid repeated lookups for the same query
+const searchCache = new Map<string, { results: any; timestamp: number }>();
+const SEARCH_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 // Search endpoint - fans out to Piped API for different content types
 app.get('/search', async (c) => {
   const query = c.req.query('q');
   
   if (!query) {
     return c.json({ error: 'Missing required query parameter: q' }, 400);
+  }
+
+  // Check cache first
+  const cached = searchCache.get(query);
+  if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+    return c.json(cached.results);
   }
 
   // Type-specific filters for YouTube Music
@@ -153,21 +187,31 @@ app.get('/search', async (c) => {
     { type: 'playlists', filter: 'music_playlists' }
   ];
   
-  // Fetch from Piped API
+  // Fetch from Piped API with timeout
   const fetchFromPiped = async (filter: string) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout per request
+      
       const url = `${PIPED_BASE}/search?q=${encodeURIComponent(query)}&filter=${filter}`;
       const response = await fetch(url, { 
         headers: { 'Accept': 'application/json' },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       
       return await response.json();
-    } catch (error) {
-      console.error(`Failed to fetch ${filter} from Piped:`, error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error(`Search request timed out for ${filter}`);
+      } else {
+        console.error(`Failed to fetch ${filter} from Piped:`, error);
+      }
       return null;
     }
   };
@@ -246,8 +290,15 @@ app.get('/search', async (c) => {
     }
   }
 
+  // Cache the results
+  searchCache.set(query, { results, timestamp: Date.now() });
+
   return c.json(results);
 });
+
+// Stream cache to avoid repeated lookups for the same video
+const streamCache = new Map<string, { url: string; format: string; quality: string; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Stream endpoint - returns audio stream URL for track IDs only
 app.get('/stream/:id', async (c) => {
@@ -258,10 +309,23 @@ app.get('/stream/:id', async (c) => {
     return c.json({ error: 'Invalid track ID. Must be a yt_<videoId> format.' }, 400);
   }
 
+  // Check cache first
+  const cached = streamCache.get(videoId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return c.json(cached);
+  }
+
   try {
+    // Use a timeout to avoid hanging on slow responses
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+    
     const response = await fetch(`${PIPED_BASE}/streams/${videoId}`, {
       headers: { 'Accept': 'application/json' },
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -269,22 +333,88 @@ app.get('/stream/:id', async (c) => {
     
     const data = await response.json();
     
-    // Find best audio-only stream
-    const audioStreams = data.audioStreams || [];
-    if (audioStreams.length === 0) {
-      return c.json({ error: 'No audio streams available' }, 404);
+    // Try DASH streams first (if playable), fallback to HLS, then audioStreams
+    let streamUrl: string | undefined;
+    let format: string = 'm4a';
+    let quality: string = 'unknown';
+    
+    // First, try DASH audio streams (only if they are direct URLs, not manifests)
+    const dashData = data.dash;
+    let audioDashStreams: any[] = [];
+    
+    if (Array.isArray(dashData)) {
+      // Regular video: DASH is an array of stream objects
+      audioDashStreams = dashData.filter((s: any) => s.mimeType?.includes('audio'));
+      
+      if (audioDashStreams.length > 0) {
+        // Sort by codec preference with bitrate consideration:
+        // Opus >= 96kbps > AAC >= 128kbps > Opus < 96kbps > AAC < 128kbps > others
+        // Within each group, sort by bitrate (highest first)
+        audioDashStreams.sort((a: any, b: any) => {
+          const aBitrate = a.bitrate || 0;
+          const bBitrate = b.bitrate || 0;
+          const aIsOpus = a.mimeType?.includes('opus');
+          const bIsOpus = b.mimeType?.includes('opus');
+          const aIsAac = a.mimeType?.includes('aac') || a.mimeType?.includes('mp4a');
+          const bIsAac = b.mimeType?.includes('aac') || b.mimeType?.includes('mp4a');
+          
+          // Score calculation: prioritize quality codecs with decent bitrate
+          const getScore = (isOpus: boolean, isAac: boolean, bitrate: number) => {
+            if (isOpus && bitrate >= 96000) return 300000 + bitrate;  // High-quality Opus
+            if (isAac && bitrate >= 128000) return 200000 + bitrate; // High-quality AAC
+            if (isOpus) return 100000 + bitrate;                      // Low-bitrate Opus
+            if (isAac) return 50000 + bitrate;                        // Low-bitrate AAC
+            return bitrate;                                           // Others
+          };
+          
+          return getScore(bIsOpus, bIsAac, bBitrate) - getScore(aIsOpus, aIsAac, aBitrate);
+        });
+        const bestDashStream = audioDashStreams[0];
+        if (bestDashStream.url) {
+          streamUrl = bestDashStream.url;
+          format = bestDashStream.mimeType?.split('/')[1] || 'm4a';
+          quality = `${Math.round(bestDashStream.bitrate / 1000)}kbps`;
+        }
+      }
     }
     
-    // Sort by bitrate and pick the best one
-    audioStreams.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
-    const bestStream = audioStreams[0];
+    // Fallback to HLS streams if no DASH audio found
+    if (!streamUrl && data.hls) {
+      streamUrl = data.hls;
+      format = 'm3u8';
+      quality = 'HLS';
+    }
     
-    return c.json({
-      url: bestStream.url,
-      format: bestStream.mimeType?.split('/')[1] || 'm4a',
-      quality: `${Math.round(bestStream.bitrate / 1000)}kbps`
-    });
-  } catch (error) {
+    // Final fallback to legacy audioStreams
+    if (!streamUrl) {
+      const audioStreams = data.audioStreams || [];
+      if (audioStreams.length === 0) {
+        return c.json({ error: 'No audio streams available' }, 404);
+      }
+      
+      // Sort by bitrate and pick the best one
+      audioStreams.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
+      const bestStream = audioStreams[0];
+      streamUrl = bestStream.url;
+      format = bestStream.mimeType?.split('/')[1] || 'm4a';
+      quality = `${Math.round(bestStream.bitrate / 1000)}kbps`;
+    }
+    
+    const result = {
+      url: streamUrl,
+      format,
+      quality
+    };
+    
+    // Cache the result
+    streamCache.set(videoId, { ...result, timestamp: Date.now() });
+    
+    return c.json(result);
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error(`Stream request timed out for ${videoId}`);
+      return c.json({ error: 'Stream request timed out' }, 504);
+    }
     console.error(`Failed to fetch stream for ${videoId}:`, error);
     return c.json({ error: 'Failed to fetch stream' }, 500);
   }
