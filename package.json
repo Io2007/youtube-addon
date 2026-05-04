@@ -6,8 +6,11 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts",
+    "start": "node dist/node-server.js",
+    "start:legacy": "node dist/server.js",
+    "dev": "ts-node src/node-server.ts",
+    "dev:legacy": "ts-node src/server.ts",
+    "build:worker": "wrangler deploy --dry-run --outdir=dist-worker",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -21,6 +24,11 @@
   "devDependencies": {
     "@types/node": "^25.6.0",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.86.0"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.1",
+    "hono": "^4.12.16"
   }
 }
