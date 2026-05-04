@@ -30,18 +30,54 @@ const makePlaylistId = (playlistId: string) => `ytpl_${playlistId}`;
 
 // Extract videoId from track ID
 const extractVideoId = (id: string): string | null => {
-  if (id.startsWith('yt_') && !id.startsWith('ytalb_') && !id.startsWith('ytar_') && !id.startsWith('ytpl_')) {
-    return id.slice(3);
+  // Trim whitespace first
+  const trimmedId = id.trim();
+  
+  if (trimmedId.startsWith('yt_') && !trimmedId.startsWith('ytalb_') && !trimmedId.startsWith('ytar_') && !trimmedId.startsWith('ytpl_')) {
+    const suffix = trimmedId.slice(3);
+    // Handle case where ID is in format "watch?v=<videoId>" or similar
+    if (suffix.includes('watch?v=')) {
+      const match = suffix.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+    return suffix;
   }
   return null;
 };
 
 // Resolve prefixed ID to raw Piped ID
 const resolveId = (id: string): { type: string; rawId: string } | null => {
-  if (id.startsWith('ytalb_')) return { type: 'album', rawId: id.slice(6) };
-  if (id.startsWith('ytar_')) return { type: 'artist', rawId: id.slice(5) };
-  if (id.startsWith('ytpl_')) return { type: 'playlist', rawId: id.slice(5) };
-  if (id.startsWith('yt_')) return { type: 'track', rawId: id.slice(3) };
+  // Trim whitespace first
+  const trimmedId = id.trim();
+  
+  if (trimmedId.startsWith('ytalb_')) {
+    let rawId = trimmedId.slice(6).trim();
+    // Handle case where ID contains "playlist?list=" or "list=" prefix
+    const listMatch = rawId.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    if (listMatch) {
+      rawId = listMatch[1];
+    } else if (rawId.startsWith('playlist?')) {
+      rawId = rawId.replace(/^playlist\?/, '');
+    }
+    return { type: 'album', rawId };
+  }
+  if (trimmedId.startsWith('ytar_')) {
+    return { type: 'artist', rawId: trimmedId.slice(5).trim() };
+  }
+  if (trimmedId.startsWith('ytpl_')) {
+    let rawId = trimmedId.slice(5).trim();
+    // Handle case where ID contains "playlist?list=" or "list=" prefix
+    const listMatch = rawId.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    if (listMatch) {
+      rawId = listMatch[1];
+    } else if (rawId.startsWith('playlist?')) {
+      rawId = rawId.replace(/^playlist\?/, '');
+    }
+    return { type: 'playlist', rawId };
+  }
+  if (trimmedId.startsWith('yt_')) {
+    return { type: 'track', rawId: trimmedId.slice(3).trim() };
+  }
   return null;
 };
 
