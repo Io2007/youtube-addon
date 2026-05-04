@@ -2,15 +2,18 @@
 # Dependencies
 node_modules/
 
-# Environment variables
+# Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Build outputs
-dist/
-build/
-target/
+# Logs and temp files
+*.log
+*.tmp
+
+# Editors
+.vscode/
+.idea/
 
 # Python
 __pycache__/
@@ -21,13 +24,25 @@ __pycache__/
 env/
 venv/
 .venv/
-.ENV
-.python-version
+pip-log.txt
+pip-selfcheck.json
 
-# Logs
-*.log
+# Build outputs
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+.coverage.*
+.nyc_output
+coverage-final.json
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 ```

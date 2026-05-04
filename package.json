@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
+    "build": "echo 'No build step required for Hono workers'",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
