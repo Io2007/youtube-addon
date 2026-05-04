@@ -108,6 +108,7 @@ const getArtworkUrl = (item: any): string | undefined => {
     url = url.replace(/&?[ws]=\d+/g, '');
     url = url.replace(/&?size=\d+/g, '');
     url = url.replace(/&?crop=\w+/g, '');
+    url = url.replace(/=w\d+-h\d+-l\d+-rw/g, '');
     return url;
   }
   
@@ -117,6 +118,7 @@ const getArtworkUrl = (item: any): string | undefined => {
     url = url.replace(/&?[ws]=\d+/g, '');
     url = url.replace(/&?size=\d+/g, '');
     url = url.replace(/&?crop=\w+/g, '');
+    url = url.replace(/=w\d+-h\d+-l\d+-rw/g, '');
     return url;
   }
   
@@ -129,6 +131,7 @@ const getArtworkUrl = (item: any): string | undefined => {
     url = url.replace(/&?[ws]=\d+/g, '');
     url = url.replace(/&?size=\d+/g, '');
     url = url.replace(/&?crop=\w+/g, '');
+    url = url.replace(/=w\d+-h\d+-l\d+-rw/g, '');
     return url;
   }
   

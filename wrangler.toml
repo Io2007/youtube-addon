@@ -1,7 +1,11 @@
 name = "youtube-addon"
 compatibility_date = "2026-05-03"
 main = "src/index.ts"
+placement = "smart"
 [observability]
 [observability.logs]
 enabled = true
 invocation_logs = true
+
+[vars]
+region = "austria"
