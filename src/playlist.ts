@@ -1,4 +1,4 @@
-import { PIPED_BASE, ID_PREFIXES } from "./types";
+import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "./types";
 import type { PlaylistDetails, Track } from "./types";
 
 /**
@@ -26,7 +26,7 @@ function mapTrackFromVideo(item: any): Track | null {
     artist: item.uploaderName || item.uploader || "Unknown Artist",
     album: undefined,
     duration: item.duration || 0,
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     format: "m4a",
   };
 }
@@ -60,7 +60,7 @@ export async function getPlaylist(playlistId: string): Promise<PlaylistDetails> 
     id: playlistId,
     title: data.title || "Unknown Playlist",
     creator: data.uploaderName || data.uploader || "Unknown",
-    artworkURL: data.thumbnail || "",
+    artworkURL: getFullResolutionUrl(data.thumbnail || ""),
     tracks: [],
   };
 
