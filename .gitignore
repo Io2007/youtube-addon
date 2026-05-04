@@ -2,49 +2,44 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
+# Build outputs
 dist/
 build/
 target/
+
+# Logs
+*.log
 
 # Environment variables
 .env
 .env.local
 .env.*
 
-# Cache directories
-.cache/
-.node_cache/
-.npm/
-.yarn/
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.temp
-.DS_Store
-Thumbs.db
-
-# IDE specific
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+*.tmp
 
-# Coverage reports
-coverage/
-htmlcov/
-
-# Python specific (if applicable)
+# Python cache (if applicable)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-*.so
 
-# MyPy cache
-.mypy_cache/
+# Coverage reports
+coverage/
+htmlcov/
+*.coverage
+
+# Distribution / packaging
+*.tar.gz
+*.whl
+*.egg
+*.egg-info/
+
+# OS generated files
+.DS_Store
+Thumbs.db
 ```

@@ -14,8 +14,41 @@ import { prettyJSON } from 'hono/pretty-json';
 
 const app = new Hono();
 
-// Hardcoded Piped upstream - no overrides, no fallbacks
-const PIPED_BASE = 'https://api.piped.private.coffee';
+// Multiple Piped upstream instances for redundancy
+// If one fails, we'll try the next one in the list
+const PIPED_INSTANCES = [
+  'https://api.piped.private.coffee',
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.adminforge.de',
+  'https://pipedapi.in.projectsegfau.lt',
+];
+
+// Get a working Piped instance by trying each one
+const getWorkingPipedInstance = async (): Promise<string | null> => {
+  // Shuffle the instances to distribute load
+  const shuffled = [...PIPED_INSTANCES].sort(() => Math.random() - 0.5);
+  
+  for (const instance of shuffled) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(`${instance}/trending`, {
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        return instance;
+      }
+    } catch (e) {
+      // Try next instance
+    }
+  }
+  
+  return null;
+};
 
 // Middleware for logging and observability
 app.use('*', logger());
@@ -187,25 +220,43 @@ app.get('/search', async (c) => {
     { type: 'playlists', filter: 'music_playlists' }
   ];
   
-  // Fetch from Piped API with timeout
+  // Fetch from Piped API with timeout and fallback to multiple instances
   const fetchFromPiped = async (filter: string) => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout per request
       
-      const url = `${PIPED_BASE}/search?q=${encodeURIComponent(query)}&filter=${filter}`;
-      const response = await fetch(url, { 
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal,
-      });
+      // Try each Piped instance until one works
+      let response;
+      let lastError: Error | null = null;
+      
+      for (const instance of PIPED_INSTANCES) {
+        try {
+          const url = `${instance}/search?q=${encodeURIComponent(query)}&filter=${filter}`;
+          response = await fetch(url, { 
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal,
+          });
+          
+          if (response.ok) {
+            clearTimeout(timeoutId);
+            return await response.json();
+          }
+        } catch (e: any) {
+          lastError = e;
+          // Try next instance
+        }
+      }
       
       clearTimeout(timeoutId);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      // If we get here, all instances failed
+      if (lastError?.name === 'AbortError') {
+        console.error(`Search request timed out for ${filter}`);
+      } else {
+        console.error(`Failed to fetch ${filter} from all Piped instances:`, lastError);
       }
-      
-      return await response.json();
+      return null;
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.error(`Search request timed out for ${filter}`);
@@ -320,18 +371,49 @@ app.get('/stream/:id', async (c) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
     
-    const response = await fetch(`${PIPED_BASE}/streams/${videoId}`, {
-      headers: { 'Accept': 'application/json' },
-      signal: controller.signal,
-    });
+    // Try each Piped instance until one works
+    let data: any;
+    let lastError: Error | null = null;
+    
+    for (const instance of PIPED_INSTANCES) {
+      try {
+        const response = await fetch(`${instance}/streams/${videoId}`, {
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal,
+        });
+        
+        if (response.ok) {
+          clearTimeout(timeoutId);
+          data = await response.json();
+          
+          // Check if the response contains an error (like SIGN_IN_REQUIRED)
+          if (data.error) {
+            console.error(`Piped instance ${instance} returned error:`, data.error);
+            lastError = new Error(data.message || data.error);
+            continue; // Try next instance
+          }
+          
+          break; // Success, exit the loop
+        } else {
+          lastError = new Error(`HTTP ${response.status}`);
+        }
+      } catch (e: any) {
+        lastError = e;
+        // Try next instance
+      }
+    }
     
     clearTimeout(timeoutId);
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    // If we get here without data, all instances failed
+    if (!data) {
+      if (lastError?.name === 'AbortError') {
+        console.error(`Stream request timed out for ${videoId}`);
+        return c.json({ error: 'Stream request timed out' }, 504);
+      }
+      console.error(`Failed to fetch stream for ${videoId} from all Piped instances:`, lastError);
+      return c.json({ error: 'Failed to fetch stream', details: lastError?.message }, 500);
     }
-    
-    const data = await response.json();
     
     // Try DASH streams first (if playable), fallback to HLS, then audioStreams
     let streamUrl: string | undefined;
@@ -400,6 +482,11 @@ app.get('/stream/:id', async (c) => {
       quality = `${Math.round(bestStream.bitrate / 1000)}kbps`;
     }
     
+    // If we still don't have a stream URL, return an error
+    if (!streamUrl) {
+      return c.json({ error: 'No valid stream URL found' }, 404);
+    }
+    
     const result = {
       url: streamUrl,
       format,
@@ -432,16 +519,39 @@ app.get('/album/:id', async (c) => {
   const rawId = resolved.rawId;
 
   try {
-    // Try to fetch as playlist first (Piped treats albums as playlists)
-    const response = await fetch(`${PIPED_BASE}/playlist?list=${rawId}`, {
-      headers: { 'Accept': 'application/json' },
-    });
+    // Try each Piped instance until one works
+    let data: any;
+    let lastError: Error | null = null;
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    for (const instance of PIPED_INSTANCES) {
+      try {
+        const response = await fetch(`${instance}/playlist?list=${rawId}`, {
+          headers: { 'Accept': 'application/json' },
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+          
+          // Check if the response contains an error
+          if (data.error) {
+            console.error(`Piped instance ${instance} returned error:`, data.error);
+            lastError = new Error(data.message || data.error);
+            continue;
+          }
+          
+          break;
+        } else {
+          lastError = new Error(`HTTP ${response.status}`);
+        }
+      } catch (e: any) {
+        lastError = e;
+      }
     }
     
-    const data = await response.json();
+    if (!data) {
+      console.error(`Failed to fetch album ${rawId} from all Piped instances:`, lastError);
+      return c.json({ error: 'Failed to fetch album' }, 500);
+    }
     
     // Map album metadata
     const album = {
@@ -486,29 +596,63 @@ app.get('/artist/:id', async (c) => {
   const channelId = resolved.rawId;
 
   try {
-    // Fetch channel info
-    const response = await fetch(`${PIPED_BASE}/channel/${channelId}`, {
-      headers: { 'Accept': 'application/json' },
-    });
+    // Try each Piped instance until one works
+    let data: any;
+    let lastError: Error | null = null;
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    for (const instance of PIPED_INSTANCES) {
+      try {
+        const response = await fetch(`${instance}/channel/${channelId}`, {
+          headers: { 'Accept': 'application/json' },
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+          
+          // Check if the response contains an error
+          if (data.error) {
+            console.error(`Piped instance ${instance} returned error:`, data.error);
+            lastError = new Error(data.message || data.error);
+            continue;
+          }
+          
+          break;
+        } else {
+          lastError = new Error(`HTTP ${response.status}`);
+        }
+      } catch (e: any) {
+        lastError = e;
+      }
     }
     
-    const data = await response.json();
+    if (!data) {
+      console.error(`Failed to fetch artist ${channelId} from all Piped instances:`, lastError);
+      return c.json({ error: 'Failed to fetch artist' }, 500);
+    }
+    
     const artistName = data.name || data.title || 'Unknown Artist';
     
-    // Re-query for top tracks using search
-    const tracksPromise = fetch(`${PIPED_BASE}/search?q=${encodeURIComponent(artistName)}&filter=music_songs`, {
-      headers: { 'Accept': 'application/json' },
-    }).then(r => r.ok ? r.json() : { items: [] });
+    // Re-query for top tracks using search with fallback
+    const fetchSearchWithFallback = async (query: string, filter: string) => {
+      for (const inst of PIPED_INSTANCES) {
+        try {
+          const resp = await fetch(`${inst}/search?q=${encodeURIComponent(query)}&filter=${filter}`, {
+            headers: { 'Accept': 'application/json' },
+          });
+          if (resp.ok) {
+            return await resp.json();
+          }
+        } catch (e) {
+          // Try next instance
+        }
+      }
+      return { items: [] };
+    };
     
-    // Re-query for albums using search
-    const albumsPromise = fetch(`${PIPED_BASE}/search?q=${encodeURIComponent(artistName)}&filter=music_albums`, {
-      headers: { 'Accept': 'application/json' },
-    }).then(r => r.ok ? r.json() : { items: [] });
-    
-    const [tracksData, albumsData] = await Promise.all([tracksPromise, albumsPromise]);
+    const [tracksData, albumsData] = await Promise.all([
+      fetchSearchWithFallback(artistName, 'music_songs'),
+      fetchSearchWithFallback(artistName, 'music_albums')
+    ]);
     
     // Map top tracks
     const topTracks = (tracksData.items || []).slice(0, 10).map((item: any) => ({
@@ -553,15 +697,39 @@ app.get('/playlist/:id', async (c) => {
   const rawId = resolved.rawId;
 
   try {
-    const response = await fetch(`${PIPED_BASE}/playlist?list=${rawId}`, {
-      headers: { 'Accept': 'application/json' },
-    });
+    // Try each Piped instance until one works
+    let data: any;
+    let lastError: Error | null = null;
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    for (const instance of PIPED_INSTANCES) {
+      try {
+        const response = await fetch(`${instance}/playlist?list=${rawId}`, {
+          headers: { 'Accept': 'application/json' },
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+          
+          // Check if the response contains an error
+          if (data.error) {
+            console.error(`Piped instance ${instance} returned error:`, data.error);
+            lastError = new Error(data.message || data.error);
+            continue;
+          }
+          
+          break;
+        } else {
+          lastError = new Error(`HTTP ${response.status}`);
+        }
+      } catch (e: any) {
+        lastError = e;
+      }
     }
     
-    const data = await response.json();
+    if (!data) {
+      console.error(`Failed to fetch playlist ${rawId} from all Piped instances:`, lastError);
+      return c.json({ error: 'Failed to fetch playlist' }, 500);
+    }
     
     // Map playlist metadata
     const playlist = {
