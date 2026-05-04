@@ -1,0 +1,26 @@
+{
+  "name": "youtube-music-addon",
+  "version": "1.0.0",
+  "description": "YouTube Music addon for Eclipse with type-specific search fan-out via Piped API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "youtube-music",
+    "piped",
+    "eclipse",
+    "music-addon"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
