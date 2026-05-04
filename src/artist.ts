@@ -1,4 +1,4 @@
-import { PIPED_BASE, ID_PREFIXES } from "./types";
+import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "./types";
 import type { ArtistDetails, Track, Album } from "./types";
 import { search } from "./search";
 
@@ -27,7 +27,7 @@ function mapTrackFromVideo(item: any): Track | null {
     artist: item.uploaderName || item.uploader || "Unknown Artist",
     album: undefined,
     duration: item.duration || 0,
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     format: "m4a",
   };
 }
@@ -52,7 +52,7 @@ function mapAlbumFromItem(item: any): Album | null {
     id: `${ID_PREFIXES.album}${id}`,
     title: item.title || "Unknown Album",
     artist: item.uploaderName || item.uploader || "Unknown Artist",
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     trackCount: 0,
     year: undefined,
   };
@@ -132,7 +132,7 @@ export async function getArtist(artistId: string): Promise<ArtistDetails> {
   return {
     id: artistId,
     name: artistName,
-    artworkURL: channelData.avatarUrl || channelData.thumbnail || "",
+    artworkURL: getFullResolutionUrl(channelData.avatarUrl || channelData.thumbnail || ""),
     genres: undefined, // Piped doesn't provide genre info
     topTracks,
     albums,

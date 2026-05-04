@@ -1,4 +1,4 @@
-import { PIPED_BASE, ID_PREFIXES, SEARCH_FILTERS } from "./types";
+import { PIPED_BASE, ID_PREFIXES, SEARCH_FILTERS, getFullResolutionUrl } from "./types";
 import type { Track, Album, Artist, Playlist, SearchResults } from "./types";
 
 /**
@@ -30,7 +30,7 @@ function mapTrack(item: any): Track | null {
     artist: item.uploaderName || item.uploader || "Unknown Artist",
     album: undefined, // Piped doesn't always provide album info
     duration: item.duration || 0,
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     format: "m4a",
   };
 }
@@ -56,7 +56,7 @@ function mapAlbum(item: any): Album | null {
     id: `${ID_PREFIXES.album}${id}`,
     title: item.title || "Unknown Album",
     artist: item.uploaderName || item.uploader || "Unknown Artist",
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     trackCount: 0, // Will be populated when fetching album details
     year: undefined, // Piped may not provide year directly
   };
@@ -81,7 +81,7 @@ function mapArtist(item: any): Artist | null {
   return {
     id: `${ID_PREFIXES.artist}${channelId}`,
     name: item.name || item.title || "Unknown Artist",
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     genres: undefined, // Piped doesn't provide genre info
   };
 }
@@ -105,7 +105,7 @@ function mapPlaylist(item: any): Playlist | null {
     id: `${ID_PREFIXES.playlist}${playlistId}`,
     title: item.title || "Unknown Playlist",
     creator: item.uploaderName || item.uploader || "Unknown",
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     trackCount: 0, // Will be populated when fetching playlist details
   };
 }

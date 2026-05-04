@@ -7,6 +7,7 @@
  * - Vercel Edge Functions
  * 
  * Endpoints:
+ * - GET /manifest.json - Addon manifest (required by Eclipse)
  * - GET /search?q=query - Search across all music types
  * - GET /stream/:id - Get stream URL for a track
  * - GET /album/:id - Get album details with tracks
@@ -16,7 +17,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { search, getStream, getAlbum, getArtist, getPlaylist } from "./index";
+import { search, getStream, getAlbum, getArtist, getPlaylist, RESOURCES, TYPES, CONTENT_TYPE } from "./index";
 
 // Create Hono app
 const app = new Hono();
@@ -24,12 +25,27 @@ const app = new Hono();
 // Apply CORS middleware
 app.use("/*", cors());
 
+// GET /manifest.json - Required by Eclipse Music Addon system
+app.get("/manifest.json", (c) => {
+  return c.json({
+    id: "com.youtube.music.addon",
+    name: "YouTube Music Addon",
+    version: "1.0.0",
+    description: "Streams music from YouTube Music via Piped API",
+    icon: "https://www.youtube.com/s/desktop/img/favicon_144x144.png",
+    resources: Array.from(RESOURCES),
+    types: Array.from(TYPES),
+    contentType: CONTENT_TYPE
+  });
+});
+
 // Health check endpoint
 app.get("/", (c) => {
   return c.json({
     name: "YouTube Music Addon",
     version: "1.0.0",
     endpoints: [
+      "GET /manifest.json",
       "GET /search?q=query",
       "GET /stream/:id",
       "GET /album/:id",

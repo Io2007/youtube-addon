@@ -1,4 +1,4 @@
-import { PIPED_BASE, ID_PREFIXES } from "./types";
+import { PIPED_BASE, ID_PREFIXES, getFullResolutionUrl } from "./types";
 import type { AlbumDetails, Track } from "./types";
 
 /**
@@ -21,7 +21,7 @@ function mapTrackFromVideo(item: any, videoId: string): Track {
     artist: item.uploaderName || item.uploader || "Unknown Artist",
     album: undefined,
     duration: item.duration || 0,
-    artworkURL: item.thumbnail || "",
+    artworkURL: getFullResolutionUrl(item.thumbnail || ""),
     format: "m4a",
   };
 }
@@ -56,7 +56,7 @@ export async function getAlbum(albumId: string): Promise<AlbumDetails> {
     id: albumId,
     title: data.title || "Unknown Album",
     artist: data.uploaderName || data.uploader || "Unknown Artist",
-    artworkURL: data.thumbnail || "",
+    artworkURL: getFullResolutionUrl(data.thumbnail || ""),
     year: undefined,
     tracks: [],
   };

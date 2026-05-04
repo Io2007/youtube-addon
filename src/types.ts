@@ -26,6 +26,16 @@ export const SEARCH_FILTERS = {
   playlists: "music_playlists",
 } as const;
 
+/**
+ * Removes YouTube image size parameters to get full resolution
+ * e.g., removes "=w120-h120-l90-rw" from thumbnail URLs
+ */
+export function getFullResolutionUrl(url: string): string {
+  if (!url) return url;
+  // Remove common YouTube image size parameters
+  return url.replace(/=w\d+-h\d+(-l\d+)?(-rw)?(-c)?/, "");
+}
+
 // Type definitions
 export interface Track {
   id: string;
