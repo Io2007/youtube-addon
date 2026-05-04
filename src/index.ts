@@ -333,22 +333,48 @@ app.get('/stream/:id', async (c) => {
     
     const data = await response.json();
     
-    // Try DASH streams first, fallback to HLS, then audioStreams
+    // Try DASH streams first (if playable), fallback to HLS, then audioStreams
     let streamUrl: string | undefined;
     let format: string = 'm4a';
     let quality: string = 'unknown';
     
-    // First, try to find DASH audio streams
-    const dashStreams = data.dash || [];
-    if (dashStreams.length > 0) {
-      // Sort by bitrate and pick the best audio stream
-      const audioDashStreams = dashStreams.filter((s: any) => s.mimeType?.includes('audio'));
+    // First, try DASH audio streams (only if they are direct URLs, not manifests)
+    const dashData = data.dash;
+    let audioDashStreams: any[] = [];
+    
+    if (Array.isArray(dashData)) {
+      // Regular video: DASH is an array of stream objects
+      audioDashStreams = dashData.filter((s: any) => s.mimeType?.includes('audio'));
+      
       if (audioDashStreams.length > 0) {
-        audioDashStreams.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
+        // Sort by codec preference with bitrate consideration:
+        // Opus >= 96kbps > AAC >= 128kbps > Opus < 96kbps > AAC < 128kbps > others
+        // Within each group, sort by bitrate (highest first)
+        audioDashStreams.sort((a: any, b: any) => {
+          const aBitrate = a.bitrate || 0;
+          const bBitrate = b.bitrate || 0;
+          const aIsOpus = a.mimeType?.includes('opus');
+          const bIsOpus = b.mimeType?.includes('opus');
+          const aIsAac = a.mimeType?.includes('aac') || a.mimeType?.includes('mp4a');
+          const bIsAac = b.mimeType?.includes('aac') || b.mimeType?.includes('mp4a');
+          
+          // Score calculation: prioritize quality codecs with decent bitrate
+          const getScore = (isOpus: boolean, isAac: boolean, bitrate: number) => {
+            if (isOpus && bitrate >= 96000) return 300000 + bitrate;  // High-quality Opus
+            if (isAac && bitrate >= 128000) return 200000 + bitrate; // High-quality AAC
+            if (isOpus) return 100000 + bitrate;                      // Low-bitrate Opus
+            if (isAac) return 50000 + bitrate;                        // Low-bitrate AAC
+            return bitrate;                                           // Others
+          };
+          
+          return getScore(bIsOpus, bIsAac, bBitrate) - getScore(aIsOpus, aIsAac, aBitrate);
+        });
         const bestDashStream = audioDashStreams[0];
-        streamUrl = bestDashStream.url;
-        format = bestDashStream.mimeType?.split('/')[1] || 'm4a';
-        quality = `${Math.round(bestDashStream.bitrate / 1000)}kbps`;
+        if (bestDashStream.url) {
+          streamUrl = bestDashStream.url;
+          format = bestDashStream.mimeType?.split('/')[1] || 'm4a';
+          quality = `${Math.round(bestDashStream.bitrate / 1000)}kbps`;
+        }
       }
     }
     
