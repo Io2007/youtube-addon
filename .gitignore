@@ -2,13 +2,11 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
-dist/
-build/
-*.js.map
-*.tsbuildinfo
+# Logs and temp files
+*.log
+*.tmp
 
-# Environment variables
+# Environment
 .env
 .env.local
 *.env.*
@@ -17,32 +15,28 @@ build/
 .vscode/
 .idea/
 
-# Logs
-*.log
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Python (if applicable)
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
+venv/
+.venv/
+.env
+
+# Build outputs
+dist/
+build/
+target/
+*.o
+*.obj
+*.exe
+*.dll
 *.so
-.coverage
-htmlcov/
-.coverage.*
-.pytest_cache/
-.mypy_cache/
+*.a
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
-
-# Compressed files
+# Compression
 *.zip
 *.gz
 *.tar
@@ -52,4 +46,36 @@ htmlcov/
 *.7z
 *.rar
 *.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+
+# Gradle
+.gradle/
+
+# Original rules preserved
+*.log
 ```
