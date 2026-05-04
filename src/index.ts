@@ -1,6 +1,6 @@
 /**
  * YouTube Music Addon for Eclipse
- * 
+ *
  * Simple Hono-based API with logging/observability
  */
 
@@ -9,7 +9,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 
-export const app = new Hono();
+const app = new Hono();
 
 // Middleware for logging and observability
 app.use('*', logger());
@@ -21,3 +21,5 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 
 // Main route
 app.get('/', (c) => c.json({ message: 'YouTube Music Addon API', version: '1.0.0' }));
+
+export default app;
